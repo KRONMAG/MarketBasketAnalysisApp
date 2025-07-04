@@ -22,7 +22,7 @@ namespace MarketBasketAnalysis.Client.Domain
         /// <summary>
         /// Gets the number of transactions that contain the item in this part of the rule.
         /// </summary>
-        public double Count { get; }
+        public int Count { get; }
 
         /// <summary>
         /// Gets the support of the item in this part of the rule, 

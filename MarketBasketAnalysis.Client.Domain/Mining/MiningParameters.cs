@@ -68,7 +68,7 @@ namespace MarketBasketAnalysis.Client.Domain.Mining
         /// or if <paramref name="degreeOfParallelism"/> is not between 1 and 512.
         /// </exception>
         public MiningParameters(double minSupport, double minConfidence, IItemConverter itemConverter = null,
-            IItemExcluder itemExcluder = null, int degreeOfParallelism = 8)
+            IItemExcluder itemExcluder = null, int degreeOfParallelism = 1)
         {
             if (minSupport < 0 || minSupport > 1)
             {

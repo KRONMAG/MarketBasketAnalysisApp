@@ -1,5 +1,5 @@
-﻿using ConcurrentCollections;
-using System;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -12,8 +12,8 @@ namespace MarketBasketAnalysis.Client.Domain.Mining
 
         private readonly IReadOnlyCollection<ItemExclusionRule> _exclusionRules;
 
-        private readonly ConcurrentHashSet<Item> _allowedItems;
-        private readonly ConcurrentHashSet<Item> _notAllowedItems;
+        private readonly ConcurrentDictionary<Item, int> _allowedItems;
+        private readonly ConcurrentDictionary<Item, int> _notAllowedItems;
 
         #endregion
 
@@ -37,6 +37,12 @@ namespace MarketBasketAnalysis.Client.Domain.Mining
             if (exclusionRules == null)
                 throw new ArgumentNullException(nameof(exclusionRules));
 
+            if (exclusionRules.Count == 0)
+            {
+                throw new ArgumentException("Collection of item exclusion rules cannot be empty.",
+                    nameof(exclusionRules));
+            }
+
             if (exclusionRules.Any(item => item == null))
             {
                 throw new ArgumentException("Collection of item exclusion rules cannot contain null items.",
@@ -45,8 +51,8 @@ namespace MarketBasketAnalysis.Client.Domain.Mining
 
             _exclusionRules = exclusionRules;
 
-            _allowedItems = new ConcurrentHashSet<Item>();
-            _notAllowedItems = new ConcurrentHashSet<Item>();
+            _allowedItems = new ConcurrentDictionary<Item, int>();
+            _notAllowedItems = new ConcurrentDictionary<Item, int>();
         }
 
         #endregion
@@ -59,10 +65,10 @@ namespace MarketBasketAnalysis.Client.Domain.Mining
             if (item == null)
                 throw new ArgumentNullException(nameof(item));
 
-            if (_allowedItems.Contains(item))
+            if (_allowedItems.ContainsKey(item))
                 return false;
 
-            if (_notAllowedItems.Contains(item))
+            if (_notAllowedItems.ContainsKey(item))
                 return true;
 
             var shouldExclude = false;
@@ -78,9 +84,9 @@ namespace MarketBasketAnalysis.Client.Domain.Mining
             }
 
             if (shouldExclude)
-                _notAllowedItems.Add(item);
+                _notAllowedItems.TryAdd(item, default);
             else
-                _allowedItems.Add(item);
+                _allowedItems.TryAdd(item, default);
 
             return shouldExclude;
         }

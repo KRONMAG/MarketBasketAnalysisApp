@@ -19,6 +19,6 @@ namespace MarketBasketAnalysis.Client.Domain.Mining
         /// <c>true</c> if the item should be replaced with a group representation; otherwise, <c>false</c>.
         /// </returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="item"/> is <c>null</c>.</exception>
-        bool ShouldReplaceWithGroup(Item item, out Item group);
+        bool TryConvert(Item item, out Item group);
     }
 }

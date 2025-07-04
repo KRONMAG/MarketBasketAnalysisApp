@@ -58,7 +58,7 @@ namespace MarketBasketAnalysis.Client.Domain.Mining
         #region Methods
 
         /// <inheritdoc />
-        public bool ShouldReplaceWithGroup(Item item, out Item group)
+        public bool TryConvert(Item item, out Item group)
         {
             if (item == null)
                 throw new ArgumentNullException(nameof(item));

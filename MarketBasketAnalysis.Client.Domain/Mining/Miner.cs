@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.ObjectPool;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -57,59 +58,66 @@ namespace MarketBasketAnalysis.Client.Domain.Mining
         private IReadOnlyCollection<AssociationRule> MineInternal(IEnumerable<Item[]> transactions,
             MiningParameters parameters, CancellationToken token)
         {
-            MiningStageChanged?.Invoke(this, MiningStage.FrequentItemSearch);
+            OnMiningStageChanged(MiningStage.FrequentItemSearch);
 
             // ReSharper disable once PossibleMultipleEnumeration
             var frequentItems = SearchForFrequentItems(transactions, parameters, token, out var transactionCount);
 
-            MiningStageChanged?.Invoke(this, MiningStage.ItemsetSearch);
+            OnMiningStageChanged(MiningStage.ItemsetSearch);
 
             // ReSharper disable once PossibleMultipleEnumeration
-            var itemsets = SearchForItemsets(transactions, parameters, frequentItems, transactionCount,
-                progress => MiningProgressChanged?.Invoke(this, progress), token);
+            var itemsets = SearchForItemsets(transactions, parameters, frequentItems, transactionCount, token);
 
-            MiningStageChanged?.Invoke(this, MiningStage.AssociationRuleGeneration);
+            OnMiningStageChanged(MiningStage.AssociationRuleGeneration);
 
             return GenerateAssociationRules(itemsets, frequentItems, transactionCount, parameters, token);
         }
 
-        private static Dictionary<Item, int> SearchForFrequentItems(IEnumerable<Item[]> transactions,
+        private Dictionary<Item, int> SearchForFrequentItems(IEnumerable<Item[]> transactions,
             MiningParameters parameters, CancellationToken token, out int transactionCount)
         {
-            var transactionCountInternal = 0;
-
             var itemFrequencies = new ConcurrentDictionary<Item, int>(parameters.DegreeOfParallelism, 0);
+            var itemsPool = new DefaultObjectPool<HashSet<Item>>(
+                new DefaultPooledObjectPolicy<HashSet<Item>>(),
+                parameters.DegreeOfParallelism);
 
-            transactions
+            transactionCount = transactions
                 .AsParallel()
                 .WithDegreeOfParallelism(parameters.DegreeOfParallelism)
                 .WithCancellation(token)
-                .ForAll(transaction =>
+                .Sum(transaction =>
                 {
                     ThrowIfTransactionIsNull(transaction);
 
+                    var items = itemsPool.Get();
+
                     foreach (var item in transaction)
                     {
-                        if (parameters.ItemExcluder?.ShouldExclude(item) ?? false)
+                        if (items.Contains(item) || parameters.ItemExcluder?.ShouldExclude(item) == true)
                             continue;
 
-                        var result = item;
-
-                        if (parameters.ItemConverter?.ShouldReplaceWithGroup(item, out var group) ?? false)
+                        items.Add(item);
+                        
+                        if (parameters.ItemConverter?.TryConvert(item, out var group) == true)
                         {
-                            if (parameters.ItemExcluder?.ShouldExclude(group) ?? false)
+                            if (items.Contains(group) || parameters.ItemExcluder?.ShouldExclude(group) == true)
                                 continue;
 
-                            result = group;
-                        }
+                            items.Add(group);
 
-                        itemFrequencies.AddOrUpdate(result, 1, (_, frequency) => frequency + 1);
+                            itemFrequencies.AddOrUpdate(group, 1, UpdateFrequency);
+                        }
+                        else
+                        {
+                            itemFrequencies.AddOrUpdate(item, 1, UpdateFrequency);
+                        }
                     }
 
-                    Interlocked.Increment(ref transactionCountInternal);
-                });
+                    items.Clear();
+                    itemsPool.Return(items);
 
-            transactionCount = transactionCountInternal;
+                    return 1;
+                });
 
             var frequencyThreshold = (int)Math.Ceiling(transactionCount * parameters.MinSupport);
 
@@ -118,9 +126,9 @@ namespace MarketBasketAnalysis.Client.Domain.Mining
                 .ToDictionary(keyValuePair => keyValuePair.Key, keyValuePair => keyValuePair.Value);
         }
 
-        private static ConcurrentDictionary<(Item, Item), int> SearchForItemsets(IEnumerable<Item[]> transactions,
+        private ConcurrentDictionary<(Item, Item), int> SearchForItemsets(IEnumerable<Item[]> transactions,
             MiningParameters parameters, Dictionary<Item, int> frequentItems, int transactionCount,
-            Action<double> fireMiningProgressChangedEvent, CancellationToken token)
+            CancellationToken token)
         {
             var previousProcessedTransactionsCount = 0;
             var processedTransactionCount = 0;
@@ -129,10 +137,13 @@ namespace MarketBasketAnalysis.Client.Domain.Mining
             var timer = new Timer(100);
 
             timer.Elapsed += Timer_Elapsed;
-
             timer.Start();
 
             var itemsetFrequencies = new ConcurrentDictionary<(Item, Item), int>(parameters.DegreeOfParallelism, 0);
+            var itemsetsPool = new DefaultObjectPool<HashSet<(Item, Item)>>(
+                new DefaultPooledObjectPolicy<HashSet<(Item, Item)>>(),
+                parameters.DegreeOfParallelism);
+            var itemConverter = parameters.ItemConverter;
 
             try
             {
@@ -143,33 +154,43 @@ namespace MarketBasketAnalysis.Client.Domain.Mining
                     .ForAll(transaction =>
                     {
                         ThrowIfTransactionIsNull(transaction);
-                        
+
+                        var itemsets = itemsetsPool.Get();
+
                         for (var i = 0; i < transaction.Length; i++)
                             for (var j = i + 1; j < transaction.Length; j++)
                             {
-                                var (item1, item2) = transaction[i].Id < transaction[j].Id
+                                var itemset = transaction[i].Id < transaction[j].Id
                                     ? (transaction[i], transaction[j])
                                     : (transaction[j], transaction[i]);
 
-                                if (parameters.ItemConverter != null)
-                                {
-                                    item1 = parameters.ItemConverter.ShouldReplaceWithGroup(item1, out var item1Group)
-                                        ? item1Group
-                                        : item1;
-                                    item2 = parameters.ItemConverter.ShouldReplaceWithGroup(item2, out var item2Group)
-                                        ? item2Group
-                                        : item2;
+                                if (itemset.Item1.Equals(itemset.Item2) || !itemsets.Add(itemset))
+                                    continue;
 
-                                    if (item1.Equals(item2))
+                                if (itemConverter != null)
+                                {
+                                    var isItem1Converted = itemConverter.TryConvert(itemset.Item1, out var item1Group);
+                                    var isItem2Converted = itemConverter.TryConvert(itemset.Item2, out var item2Group);
+
+                                    if (isItem1Converted)
+                                        itemset.Item1 = item1Group;
+
+                                    if (isItem2Converted)
+                                        itemset.Item2 = item2Group;
+
+                                    var shouldSkipItemset = (isItem1Converted || isItem2Converted) &&
+                                        (!itemsets.Add(itemset) || itemset.Item1.Equals(itemset.Item2));
+
+                                    if (shouldSkipItemset)
                                         continue;
                                 }
 
-                                if (frequentItems.ContainsKey(item1) && frequentItems.ContainsKey(item2))
-                                {
-                                    itemsetFrequencies.AddOrUpdate((item1, item2), 1,
-                                        (_, itemsetFrequency) => itemsetFrequency + 1);
-                                }
+                                if (frequentItems.ContainsKey(itemset.Item1) && frequentItems.ContainsKey(itemset.Item2))
+                                    itemsetFrequencies.AddOrUpdate(itemset, 1, UpdateFrequency);
                             }
+
+                        itemsets.Clear();
+                        itemsetsPool.Return(itemsets);
 
                         processedTransactionCount++;
                     });
@@ -192,7 +213,7 @@ namespace MarketBasketAnalysis.Client.Domain.Mining
 
                 previousProcessedTransactionsCount = processedTransactionCount;
 
-                fireMiningProgressChangedEvent(progress);
+                OnMiningProgressChanged(progress);
             }
         }
 
@@ -201,6 +222,12 @@ namespace MarketBasketAnalysis.Client.Domain.Mining
             if (transaction == null)
                 throw new InvalidOperationException("Transaction cannot be null.");
         }
+
+        private void OnMiningStageChanged(MiningStage stage) =>
+            MiningStageChanged?.Invoke(this, stage);
+
+        private void OnMiningProgressChanged(double progress) =>
+            MiningProgressChanged?.Invoke(this, progress);
 
         private ConcurrentBag<AssociationRule> GenerateAssociationRules(ConcurrentDictionary<(Item, Item), int> frequentItemsets,
             Dictionary<Item, int> frequentItems, int transactionCount, MiningParameters parameters, CancellationToken token)
@@ -240,6 +267,8 @@ namespace MarketBasketAnalysis.Client.Domain.Mining
 
             return associationRules;
         }
+
+        private int UpdateFrequency<TKey>(TKey _, int frequency) => frequency + 1;
 
         #endregion
     }

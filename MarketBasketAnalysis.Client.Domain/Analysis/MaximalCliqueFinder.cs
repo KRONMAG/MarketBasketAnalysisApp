@@ -85,14 +85,18 @@ namespace MarketBasketAnalysis.Client.Domain.Analysis
             if (associationRules.Count == 0)
                 return Array.Empty<IReadOnlyCollection<AssociationRule>>();
 
-            if (associationRules.Count <= byte.MaxValue)
+            var itemsCount = associationRules.Select(r => r.LeftHandSide.Item)
+                .Union(associationRules.Select(r => r.RightHandSide.Item))
+                .Count();
+
+            if (itemsCount <= byte.MaxValue)
             {
                 byte vertexCounter = 0;
 
                 return FindInternal(associationRules, parameters, MarkupItems(associationRules, () => vertexCounter++), token);
             }
             // ReSharper disable once RedundantIfElseBlock
-            else if (associationRules.Count <= ushort.MaxValue)
+            else if (itemsCount <= ushort.MaxValue)
             {
                 ushort vertexCounter = 0;
 
@@ -136,6 +140,12 @@ namespace MarketBasketAnalysis.Client.Domain.Analysis
                 {
                     token.ThrowIfCancellationRequested();
 
+                    if (parameters.AssociationRuleFilter != null &&
+                        !parameters.AssociationRuleFilter(associationRule))
+                    {
+                        continue;
+                    }
+
                     var sourceVertex = itemToVertexMap[associationRule.LeftHandSide.Item];
                     var targetVertex = itemToVertexMap[associationRule.RightHandSide.Item];
 
@@ -155,6 +165,12 @@ namespace MarketBasketAnalysis.Client.Domain.Analysis
                 foreach (var associationRule in associationRules)
                 {
                     token.ThrowIfCancellationRequested();
+
+                    if (parameters.AssociationRuleFilter != null &&
+                        !parameters.AssociationRuleFilter(associationRule))
+                    {
+                        continue;
+                    }
 
                     var sourceVertex = itemToVertexMap[associationRule.LeftHandSide.Item];
                     var targetVertex = itemToVertexMap[associationRule.RightHandSide.Item];

@@ -87,7 +87,7 @@ namespace MarketBasketAnalysis.Client.Domain.Analysis
 
         public IReadOnlyCollection<MaximalClique<TVertex>> Find<TVertex>(
             IReadOnlyDictionary<TVertex, HashSet<TVertex>> adjacencyList,
-            int minCliqueSize, int maxCliqueSize, CancellationToken token)
+            int minCliqueSize, int maxCliqueSize, CancellationToken token = default)
         {
             if (adjacencyList == null)
                 throw new ArgumentNullException(nameof(adjacencyList));
@@ -106,10 +106,10 @@ namespace MarketBasketAnalysis.Client.Domain.Analysis
                 throw new ArgumentOutOfRangeException(nameof(maxCliqueSize), maxCliqueSize,
                     "Maximum clique size must be greater than or equal to minimum clique size");
             }
-
+            
             var currentState = new LocalState<TVertex>(Array.Empty<TVertex>(),
                 new HashSet<TVertex>(adjacencyList.Keys), new HashSet<TVertex>(), adjacencyList);
-
+            
             var stack = new Stack<LocalState<TVertex>>();
             var maximalCliques = new List<MaximalClique<TVertex>>();
 

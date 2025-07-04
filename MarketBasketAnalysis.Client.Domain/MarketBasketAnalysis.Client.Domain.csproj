@@ -6,12 +6,13 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="ConcurrentHashSet" Version="1.3.0" />
+		<PackageReference Include="Microsoft.Extensions.ObjectPool" Version="9.0.6" />
 		<PackageReference Include="SonarAnalyzer.CSharp" Version="10.5.0.109200">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		
+	</ItemGroup>
+
 	<ItemGroup>
 		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
 			<_Parameter1>MarketBasketAnalysis.Client.Domain.UnitTests</_Parameter1>

@@ -32,16 +32,24 @@ namespace MarketBasketAnalysis.Client.Domain.Analysis
         public bool IgnoreOneWayLinks { get; }
 
         /// <summary>
+        /// Gets the predicate used to filter association rules before finding maximal cliques.
+        /// If <c>null</c>, all rules are considered.
+        /// </summary>
+        public Predicate<AssociationRule> AssociationRuleFilter { get;}
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="MaximalCliqueFindingParameters"/> class.
         /// </summary>
         /// <param name="minCliqueSize">The minimum size of a clique to be considered.</param>
         /// <param name="maxCliqueSize">The maximum size of a clique to be considered.</param>
         /// <param name="ignoreOneWayLinks">A value indicating whether one-way links should be ignored.</param>
+        /// <param name="associationRuleFilter">A predicate used to filter association rules before finding maximal cliques. If <c>null</c>, all rules are considered.</param>
         /// <exception cref="ArgumentOutOfRangeException">
         /// Thrown if <paramref name="minCliqueSize"/> is less than or equal to zero, 
         /// or if <paramref name="maxCliqueSize"/> is less than <paramref name="minCliqueSize"/>.
         /// </exception>
-        public MaximalCliqueFindingParameters(int minCliqueSize, int maxCliqueSize, bool ignoreOneWayLinks = false)
+        public MaximalCliqueFindingParameters(int minCliqueSize, int maxCliqueSize, bool ignoreOneWayLinks = false,
+            Predicate<AssociationRule> associationRuleFilter = null)
         {
             if (minCliqueSize <= 0)
             {
@@ -58,6 +66,7 @@ namespace MarketBasketAnalysis.Client.Domain.Analysis
             MinCliqueSize = minCliqueSize;
             MaxCliqueSize = maxCliqueSize;
             IgnoreOneWayLinks = ignoreOneWayLinks;
+            AssociationRuleFilter = associationRuleFilter;
         }
     }
 }
