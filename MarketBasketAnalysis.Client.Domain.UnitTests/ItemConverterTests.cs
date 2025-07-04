@@ -38,17 +38,17 @@ namespace MarketBasketAnalysis.Client.Domain.UnitTests
             Assert.Throws<ArgumentException>(() => new ItemConverter([_conversionRule, _conversionRule]));
 
         [Fact]
-        public void ShouldReplaceWithGroup_ItemIsNull_ThrowsArgumentNullException() =>
-            Assert.Throws<ArgumentNullException>(() => _itemConverter.ShouldReplaceWithGroup(null, out _));
+        public void TryConvert_ItemIsNull_ThrowsArgumentNullException() =>
+            Assert.Throws<ArgumentNullException>(() => _itemConverter.TryConvert(null, out _));
 
         [Fact]
-        public void ShouldReplaceWithGroup_ItemIsNotInRules_ReturnsFalse()
+        public void TryConvert_ItemIsNotInRules_ReturnsFalse()
         {
             // Arrange
             var item = new Item(3, "item", false);
 
             // Act
-            var result = _itemConverter.ShouldReplaceWithGroup(item, out var group);
+            var result = _itemConverter.TryConvert(item, out var group);
 
             // Assert
             Assert.False(result);
@@ -56,13 +56,13 @@ namespace MarketBasketAnalysis.Client.Domain.UnitTests
         }
 
         [Fact]
-        public void ShouldReplaceWithGroup_ItemIsInRules_ReturnsTrue()
+        public void TryConvert_ItemIsInRules_ReturnsTrue()
         {
             // Arrange
             var item = new Item(_item.Id, _item.Name, _item.IsGroup);
 
             // Act
-            var result = _itemConverter.ShouldReplaceWithGroup(item, out var group);
+            var result = _itemConverter.TryConvert(item, out var group);
 
             // Assert
             Assert.True(result);

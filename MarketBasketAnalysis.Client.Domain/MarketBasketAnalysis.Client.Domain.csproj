@@ -12,6 +12,10 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		
+	<ItemGroup>
+		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+			<_Parameter1>MarketBasketAnalysis.Client.Domain.UnitTests</_Parameter1>
+		</AssemblyAttribute>
 	</ItemGroup>
 
 </Project>
