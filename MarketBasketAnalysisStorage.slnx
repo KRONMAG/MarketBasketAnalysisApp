@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+  </Folder>
+  <Project Path="MarketBasketAnalysisStorage.App/MarketBasketAnalysisStorage.App.dcproj">
+    <Build />
+  </Project>
+  <Project Path="MarketBasketAnalysisStorage.Api/MarketBasketAnalysisStorage.Api.csproj" />
+  <Project Path="MarketBasketAnalysisStorage.Application/MarketBasketAnalysisStorage.Application.csproj" />
+  <Project Path="MarketBasketAnalysisStorage.Contracts/MarketBasketAnalysisStorage.Contracts.csproj" />
+  <Project Path="MarketBasketAnalysisStorage.Data/MarketBasketAnalysisStorage.Data.csproj" />
+</Solution>

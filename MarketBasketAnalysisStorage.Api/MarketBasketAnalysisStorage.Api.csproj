@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<AnalysisLevel>latest-all</AnalysisLevel>
+		<NuGetAuditMode>all</NuGetAuditMode>
+		<NuGetAuditLevel>low</NuGetAuditLevel>
+		<TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+		<InvariantGlobalization>true</InvariantGlobalization>
+		<DockerComposeProjectPath>..\MarketBasketAnalysis.Server.App\docker-compose.dcproj</DockerComposeProjectPath>
+		<ServerGarbageCollection>true</ServerGarbageCollection>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Google.Protobuf" Version="3.34.1" />
+        <PackageReference Include="Grpc.AspNetCore" Version="2.76.0" />
+        <PackageReference Include="Grpc.AspNetCore.HealthChecks" Version="2.76.0" />
+        <PackageReference Include="Grpc.AspNetCore.Server.Reflection" Version="2.76.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.5">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
+        <PackageReference Include="SonarAnalyzer.CSharp" Version="10.23.0.137933">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\MarketBasketAnalysisStorage.Contracts\MarketBasketAnalysisStorage.Contracts.csproj" />
+        <ProjectReference Include="..\MarketBasketAnalysisStorage.Data\MarketBasketAnalysisStorage.Data.csproj" />
+    </ItemGroup>
+
+</Project>

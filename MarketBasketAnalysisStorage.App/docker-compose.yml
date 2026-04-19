@@ -1,0 +1,62 @@
+name: market-basket-analysis-storage
+
+services:
+  app:
+    image: kronmag/market-basket-analysis-storage:latest
+    container_name: app
+    volumes:
+      - postgres-socket:/var/run/postgresql
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    environment:
+      CONNECTION_STRING: $APP_CONNECTION_STRING
+    restart: unless-stopped
+    mem_limit: 512M
+    memswap_limit: 512M
+    healthcheck:
+      test: [ "CMD", "/bin/grpc_health_probe", "-addr=:8080" ]
+      timeout: 5s
+      interval: 5s
+      retries: 10
+      start_period: 10s
+      start_interval: 1s
+
+  postgres:
+    image: postgres:18.3-alpine3.23
+    container_name: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - postgres-socket:/var/run/postgresql
+    command: postgres -c unix_socket_directories=/var/run/postgresql
+    environment:
+      POSTGRES_USER: $POSTGRES_DB
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+      POSTGRES_DB: $POSTGRES_DB
+    restart: unless-stopped
+    mem_limit: 512M
+    memswap_limit: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+      start_interval: 1s
+
+  migrations:
+    image: kronmag/market-basket-analysis-storage-migrations:latest
+    container_name: migrations
+    environment:
+      CONNECTION_STRING: $MIGRATIONS_CONNECTION_STRING
+    volumes:
+      - postgres-socket:/var/run/postgresql
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  postgres-socket:

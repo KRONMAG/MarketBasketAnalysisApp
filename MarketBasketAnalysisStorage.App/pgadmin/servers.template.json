@@ -1,0 +1,16 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Market Basket Analysis Storage",
+      "Group": "Servers",
+      "Host": "$POSTGRES_HOST",
+      "Port": $POSTGRES_PORT,
+      "MaintenanceDB": "$POSTGRES_DB",
+      "Username": "$POSTGRES_USER",
+      "SharedUsername": "$POSTGRES_USER",
+      "PassFile": ".pgpass",
+      "SSLMode": "prefer",
+      "Shared": true
+    }
+  }
+}

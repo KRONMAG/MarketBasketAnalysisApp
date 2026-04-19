@@ -403,5 +403,5 @@ FodyWeavers.xsd
 # SSL certificate
 *.pem
 
-# Envoy config file
-envoy.yaml
+# EF Core migration script
+migrations.sql

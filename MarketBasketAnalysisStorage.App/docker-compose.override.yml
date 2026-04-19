@@ -1,0 +1,60 @@
+services:
+  app:
+    extends:
+      file: docker-compose.yml
+      service: app
+    build:
+      context: ../.
+      dockerfile: MarketBasketAnalysisStorage.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+
+  migrations:
+    extends:
+      file: docker-compose.yml
+      service: migrations
+    image: market-basket-analysis-storage-migrations
+    build:
+      context: ../.
+      dockerfile: MarketBasketAnalysisStorage.Data/Dockerfile
+
+  pgadmin:
+    image: dpage/pgadmin4:9.14.0
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: $PGADMIN_DEFAULT_EMAIL
+      PGADMIN_DEFAULT_PASSWORD: $PGADMIN_DEFAULT_PASSWORD
+      POSTGRES_HOST: $POSTGRES_HOST
+      POSTGRES_PORT: $POSTGRES_PORT
+      POSTGRES_USER: $POSTGRES_DB
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+      POSTGRES_DB: $POSTGRES_DB
+    user: root
+    ports:
+      - 5400:80
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - postgres-socket:/var/run/postgresql
+      - ./pgadmin/servers.template.json:/pgadmin4/servers.template.json:ro
+      - ./pgadmin/.pgpass.template:/pgadmin4/.pgpass.template:ro
+    entrypoint: sh -c
+      "apk add --no-cache envsubst &&
+      USER_DIRECTORY="/var/lib/pgadmin/storage/$${PGADMIN_DEFAULT_EMAIL//@/_}" &&
+      PASSFILE_PATH="$$USER_DIRECTORY/.pgpass" &&
+      mkdir -pm 700 $$USER_DIRECTORY &&
+      envsubst < /pgadmin4/servers.template.json > /pgadmin4/servers.json &&
+      envsubst < /pgadmin4/.pgpass.template > $$PASSFILE_PATH &&
+      chmod 600 $$PASSFILE_PATH &&
+      /entrypoint.sh"
+
+  grpc-ui:
+    image: fullstorydev/grpcui:v1.4.3
+    command: -plaintext app:8080
+    restart: on-failure
+    ports:
+      - 8080:8080
+    depends_on:
+      app:
+        condition: service_started

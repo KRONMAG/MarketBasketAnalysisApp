@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" Sdk="Microsoft.Docker.Sdk">
+  <PropertyGroup Label="Globals">
+    <ProjectVersion>2.1</ProjectVersion>
+    <DockerTargetOS>Linux</DockerTargetOS>
+    <DockerPublishLocally>False</DockerPublishLocally>
+    <ProjectGuid>4b6ef177-1132-425c-a613-dbc5ec774f02</ProjectGuid>
+    <AdditionalComposeFilePaths>docker-compose.override.yml</AdditionalComposeFilePaths>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="docker-compose.yml" />
+    <None Include="docker-compose.override.yml">
+      <DependentUpon>docker-compose.yml</DependentUpon>
+    </None>
+    <None Include="..\.dockerignore">
+      <Link>.dockerignore</Link>
+    </None>
+  </ItemGroup>
+  <Target Name="BuildMigrationScript" AfterTargets="$(BuildDependsOn)">
+    <Exec Command="dotnet msbuild /t:BuildMigrationsScript" WorkingDirectory="..\MarketBasketAnalysisStorage.Data" UseUtf8Encoding="Always" />
+  </Target>
+</Project>

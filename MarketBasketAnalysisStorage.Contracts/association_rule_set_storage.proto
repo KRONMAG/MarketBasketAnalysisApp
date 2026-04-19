@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+option csharp_namespace = "MarketBasketAnalysisStorage.Contracts.V1";
+
+package market_basket_analysis_storage.contracts.v1;
+
+service AssociationRuleSetStorage {
+  rpc Get(GetRequest) returns (GetResponse);
+  rpc Load(LoadRequest) returns (stream LoadResponse);
+  rpc Save(SaveRequest) returns (SaveResponse);
+  rpc Remove(RemoveRequest) returns (RemoveResponse);
+}
+
+message GetRequest {}
+
+message GetResponse {
+  repeated AssociationRuleSetInfo sets = 1;
+}
+
+message LoadRequest {
+  int32 set_id = 1;
+}
+
+message LoadResponse {
+  AssociationRuleSetPart part = 1;
+}
+
+message SaveRequest {
+  AssociationRuleSetPart part = 1;
+}
+
+message SaveResponse {
+  int32 set_id = 1;
+}
+
+message RemoveRequest {
+  int32 set_id = 1;
+}
+
+message RemoveResponse {}
+
+message AssociationRuleSetPart {
+  oneof payload {
+    AssociationRuleSetInfo set_info = 1;
+    ItemChunk item_chunk = 2;
+    AssociationRuleChunk association_rule_chunk = 3;
+  }
+}
+
+message AssociationRuleSetInfo {
+  optional int32 id = 1; // Ignored when set is saved
+  string name = 2;
+  string description = 3;
+  int64 transaction_count = 4;
+}
+
+message ItemChunk {
+  int32 index = 1;
+  bool is_last = 2;
+  int32 set_id = 3;
+  repeated Item items = 4;
+}
+
+message AssociationRuleChunk {
+  int32 index = 1;
+  bool is_last = 2;
+  int32 set_id = 3;
+  repeated AssociationRule association_rules = 4;
+}
+
+message Item {
+  int32 id = 1;
+  string name = 2;
+  bool is_group = 3;
+  int64 count = 4;
+}
+
+message AssociationRule {
+  int32 left_hand_side_id = 1;
+  int32 right_hand_side_id = 2;
+  int64 count = 3;
+}

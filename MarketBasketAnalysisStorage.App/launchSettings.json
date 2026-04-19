@@ -1,0 +1,18 @@
+{
+  "profiles": {
+    "Docker Compose": {
+      "commandName": "DockerCompose",
+      "commandVersion": "1.0",
+      "composeLaunchAction": "LaunchBrowser",
+      "composeLaunchServiceName": "app",
+      "composeLaunchUrl": "http://localhost:8080",
+      "serviceActions": {
+        "app": "StartDebugging",
+        "postgres": "StartWithoutDebugging",
+        "migrations": "StartWithoutDebugging",
+        "pgadmin": "StartWithoutDebugging",
+        "grpc-ui": "StartWithoutDebugging"
+      }
+    }
+  }
+}
