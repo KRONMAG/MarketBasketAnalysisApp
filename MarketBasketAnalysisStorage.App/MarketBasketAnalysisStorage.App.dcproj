@@ -16,7 +16,4 @@
       <Link>.dockerignore</Link>
     </None>
   </ItemGroup>
-  <Target Name="BuildMigrationScript" AfterTargets="$(BuildDependsOn)">
-    <Exec Command="dotnet msbuild /t:BuildMigrationsScript" WorkingDirectory="..\MarketBasketAnalysisStorage.Data" UseUtf8Encoding="Always" />
-  </Target>
 </Project>

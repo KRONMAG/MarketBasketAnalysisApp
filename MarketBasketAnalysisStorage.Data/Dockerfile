@@ -1,5 +1,6 @@
 FROM alpine:3.23
-RUN apk add --no-cache postgresql-client
 WORKDIR /app
-COPY MarketBasketAnalysisStorage.Data/migrations.sql .
-ENTRYPOINT psql -d "$CONNECTION_STRING" -v ON_ERROR_STOP=1 -f /app/migrations.sql
+ADD https://github.com/pressly/goose/releases/download/v3.27.0/goose_linux_x86_64 /app/goose
+RUN chmod +x goose
+COPY MarketBasketAnalysisStorage.Data/Migrations .
+ENTRYPOINT /app/goose postgres "$CONNECTION_STRING" up
