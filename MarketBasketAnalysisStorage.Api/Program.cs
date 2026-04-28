@@ -1,7 +1,5 @@
 using MarketBasketAnalysisStorage.Api.HostedServices;
 using MarketBasketAnalysisStorage.Api.Services;
-using MarketBasketAnalysisStorage.Data;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,9 +20,6 @@ if (builder.Environment.IsDevelopment())
     services.AddGrpcReflection();
 
 services.AddLogging();
-services.AddDbContext<MarketBasketAnalysisDbContext>(o =>
-    o.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING")),
-    optionsLifetime: ServiceLifetime.Scoped);
 
 var app = builder.Build();
 

@@ -3,6 +3,7 @@ services:
     extends:
       file: docker-compose.yml
       service: app
+    image: kronmag/market-basket-analysis-storage:dev
     build:
       context: ../.
       dockerfile: MarketBasketAnalysisStorage.Api/Dockerfile
@@ -13,7 +14,7 @@ services:
     extends:
       file: docker-compose.yml
       service: migrations
-    image: market-basket-analysis-storage-migrations
+    image: kronmag/market-basket-analysis-storage-migrations:dev
     build:
       context: ../.
       dockerfile: MarketBasketAnalysisStorage.Data/Dockerfile
