@@ -21,6 +21,8 @@ if (builder.Environment.IsDevelopment())
 
 services.AddLogging();
 
+Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
+
 var app = builder.Build();
 
 app.MapGrpcService<AssociationRuleSetStorage>();

@@ -4,77 +4,104 @@ option csharp_namespace = "MarketBasketAnalysisStorage.Contracts.V1";
 
 package market_basket_analysis_storage.contracts.v1;
 
+import "google/protobuf/timestamp.proto";
+
 service AssociationRuleSetStorage {
   rpc Get(GetRequest) returns (GetResponse);
   rpc Load(LoadRequest) returns (stream LoadResponse);
-  rpc Save(SaveRequest) returns (SaveResponse);
+  rpc StartSave(StartSaveRequest) returns (StartSaveResponse);
+  rpc SaveItemChunk(SaveItemChunkRequest) returns (SaveItemChunkResponse);
+  rpc SaveAssociationRuleChunk(SaveAssociationRuleChunkRequest) returns (SaveAssociationRuleChunkResponse);
+  rpc CompleteSave(CompleteSaveRequest) returns (CompleteSaveResponse);
   rpc Remove(RemoveRequest) returns (RemoveResponse);
 }
 
 message GetRequest {}
 
 message GetResponse {
-  repeated AssociationRuleSetInfo sets = 1;
+  repeated AssociationRuleSet sets = 1;
 }
 
 message LoadRequest {
-  int64 set_id = 1;
+  int32 set_id = 1;
 }
 
 message LoadResponse {
   AssociationRuleSetPart part = 1;
 }
 
-message SaveRequest {
-  AssociationRuleSetPart part = 1;
+message StartSaveRequest {
+  message AssociationRuleSet {
+    string name = 1;
+    optional string description = 2;
+    int32 transactions_count = 3;
+  }
+  AssociationRuleSet set = 1;
 }
 
-message SaveResponse {
-  int64 set_id = 1;
+message StartSaveResponse {
+  int32 set_id = 1;
 }
+
+message SaveItemChunkRequest {
+  int32 set_id = 1;
+  ItemChunk chunk = 2;
+}
+
+message SaveItemChunkResponse {}
+
+message SaveAssociationRuleChunkRequest {
+  int32 set_id = 1;
+  AssociationRuleChunk chunk = 2;
+}
+
+message SaveAssociationRuleChunkResponse {}
+
+message CompleteSaveRequest {
+  int32 set_id = 1;
+}
+
+message CompleteSaveResponse {}
 
 message RemoveRequest {
-  int64 set_id = 1;
+  int32 set_id = 1;
 }
 
 message RemoveResponse {}
 
 message AssociationRuleSetPart {
   oneof payload {
-    AssociationRuleSetInfo set_info = 1;
+    AssociationRuleSet set = 1;
     ItemChunk item_chunk = 2;
     AssociationRuleChunk association_rule_chunk = 3;
   }
 }
 
-message AssociationRuleSetInfo {
-  optional int64 id = 1; // Ignored when set is saved
+message AssociationRuleSet {
+  int32 id = 1;
   string name = 2;
   string description = 3;
-  int64 transactions_count = 4;
+  int32 transactions_count = 4;
+  google.protobuf.Timestamp created_at = 5;
 }
 
 message ItemChunk {
-  bool is_last = 1;
-  int64 set_id = 2;
-  repeated Item items = 3;
+  repeated Item items = 1;
 }
 
 message AssociationRuleChunk {
-  bool is_last = 1;
-  int64 set_id = 2;
-  repeated AssociationRule association_rules = 3;
+  repeated AssociationRule association_rules = 1;
 }
 
 message Item {
-  int64 id = 1;
+  int32 id = 1;
   string name = 2;
   bool is_group = 3;
-  int64 count = 4;
+  int32 count = 4;
 }
 
 message AssociationRule {
-  int64 left_hand_side_id = 1;
-  int64 right_hand_side_id = 2;
-  int64 count = 3;
+  int32 left_hand_side_id = 1;
+  int32 right_hand_side_id = 2;
+  int32 count = 3;
 }

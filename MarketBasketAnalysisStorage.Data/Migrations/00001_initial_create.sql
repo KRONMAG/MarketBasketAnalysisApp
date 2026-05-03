@@ -1,25 +1,25 @@
 -- +goose Up
 CREATE TABLE association_rule_sets (
-    id BIGSERIAL,
+    id SERIAL,
     name TEXT NOT NULL,
     description TEXT,
-    transactions_count BIGINT NOT NULL,
-    is_saving_complete BOOL NOT NULL,
+    transactions_count INT NOT NULL,
+    is_saving_complete BOOLEAN NOT NULL,
     is_marked_to_delete BOOLEAN NOT NULL,
     created_at TIMESTAMP NOT NULL,
     CONSTRAINT pk_association_rule_sets PRIMARY KEY (id)
 );
 
 CREATE TABLE association_rule_chunks (
-    id BIGSERIAL,
-    data SMALLINT[] NOT NULL,
+    id SERIAL,
+    data bytea NOT NULL,
     association_rule_set_id INT NOT NULL,
     CONSTRAINT pk_association_rule_chunks PRIMARY KEY (id)
 );
 
 CREATE TABLE item_chunks (
-    id BIGSERIAL,
-    data SMALLINT[] NOT NULL,
+    id SERIAL,
+    data bytea NOT NULL,
     association_rule_set_id INT NOT NULL,
     CONSTRAINT pk_item_chunks PRIMARY KEY (id)
 );

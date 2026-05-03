@@ -1,6 +1,13 @@
 ﻿namespace MarketBasketAnalysisStorage.Data.Models;
 
 public record AssociationRuleChunk(
-    long Id,
+    int Id,
     IReadOnlyCollection<byte> Data,
-    long AssociationRuleSetId);
+    int AssociationRuleSetId)
+{
+    public AssociationRuleChunk(int id, byte[] data, int associationRuleSetId)
+        : this(id, (IReadOnlyCollection<byte>)data, associationRuleSetId)
+    {
+
+    }
+}

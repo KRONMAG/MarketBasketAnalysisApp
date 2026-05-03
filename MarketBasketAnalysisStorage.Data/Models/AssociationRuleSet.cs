@@ -1,10 +1,10 @@
 ﻿namespace MarketBasketAnalysisStorage.Data.Models;
 
 public record AssociationRuleSet(
-    long Id,
+    int Id,
     string Name,
     string? Description,
-    long TransactionsCount,
+    int TransactionsCount,
     bool IsSavingComplete,
     bool IsMarkedToDelete,
     DateTime CreatedAt);
