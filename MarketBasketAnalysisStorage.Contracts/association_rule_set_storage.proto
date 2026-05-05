@@ -19,7 +19,7 @@ service AssociationRuleSetStorage {
 message GetRequest {}
 
 message GetResponse {
-  repeated AssociationRuleSet sets = 1;
+  repeated AssociationRuleSet association_rule_sets = 1;
 }
 
 message LoadRequest {
@@ -64,7 +64,7 @@ message CompleteSaveRequest {
 message CompleteSaveResponse {}
 
 message RemoveRequest {
-  int32 set_id = 1;
+  int32 association_rule_set_id = 1;
 }
 
 message RemoveResponse {}

@@ -16,45 +16,30 @@ using AssociationRuleChunkGrpc = MarketBasketAnalysisStorage.Contracts.V1.Associ
 
 namespace MarketBasketAnalysisStorage.Api.Services;
 
-#pragma warning disable CA1062 // Проверить аргументы или открытые методы
-
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1062:Validate arguments of public methods", Justification = "Reviewed")]
 public class AssociationRuleSetStorage(
     ILogger<AssociationRuleSetStorage> logger) : AssociationRuleSetStorageBase
 {
     public override async Task<GetResponse> Get(GetRequest request, ServerCallContext context)
     {
+        var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
+        await using var connection = new NpgsqlConnection(connectionString);
+
+        await connection.OpenAsync(context.CancellationToken);
+
+        var command = new CommandDefinition(
+            """
+            SELECT *
+            FROM association_rule_sets
+            WHERE is_saving_complete = TRUE
+                AND is_marked_to_delete = FALSE
+            """,
+            cancellationToken: context.CancellationToken);
+        IEnumerable<AssociationRuleSetModel> associationRuleSets;
+        
         try
         {
-            var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
-            await using var connection = new NpgsqlConnection(connectionString);
-
-            await connection.OpenAsync(context.CancellationToken);
-
-            var commandDefinition = new CommandDefinition(
-                """
-                SELECT *
-                FROM public.association_rule_sets
-                WHERE are_all_item_chunks_saved = TRUE
-                    AND are_all_association_rule_chunks_saved = TRUE
-                    AND is_marked_to_delete = FALSE
-                """,
-                cancellationToken: context.CancellationToken);
-            var sets = await connection.QueryAsync<AssociationRuleSetModel>(commandDefinition);
-
-            return new()
-            {
-                Sets =
-                {
-                    sets.Select(static s => new AssociationRuleSetGrpc
-                    {
-                        Id = s.Id,
-                        Name = s.Name,
-                        Description = s.Description,
-                        TransactionsCount = s.TransactionsCount,
-                        CreatedAt = s.CreatedAt.ToTimestamp(),
-                    })
-                }
-            };
+            associationRuleSets = await connection.QueryAsync<AssociationRuleSetModel>(command);
         }
         catch (NpgsqlException e)
         {
@@ -64,38 +49,49 @@ public class AssociationRuleSetStorage(
 
             throw RpcExceptionHelper.Internal(message);
         }
+
+        return new()
+        {
+            AssociationRuleSets =
+            {
+                associationRuleSets.Select(static s => new AssociationRuleSetGrpc
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    Description = s.Description,
+                    TransactionsCount = s.TransactionsCount,
+                    CreatedAt = s.CreatedAt.ToTimestamp(),
+                })
+            }
+        };
     }
 
     public override async Task<RemoveResponse> Remove(RemoveRequest request, ServerCallContext context)
     {
-        if (request.SetId <= 0)
+        if (request.AssociationRuleSetId <= 0)
         {
-            RpcExceptionHelper.InvalidArgument("Set id must be positive.");
+            throw RpcExceptionHelper.InvalidArgument("Association rule set id must be positive.");
         }
+
+        var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
+        await using var connection = new NpgsqlConnection(connectionString);
+
+        await connection.OpenAsync(context.CancellationToken);
+
+        var command = new CommandDefinition(
+            """
+            UPDATE association_rule_sets
+            SET is_marked_to_delete = TRUE
+            WHERE id = @Id
+                AND is_saving_complete = TRUE
+                AND is_marked_to_delete = FALSE
+            """,
+            parameters: new { Id = request.AssociationRuleSetId },
+            cancellationToken: context.CancellationToken);
 
         try
         {
-            var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
-            await using var connection = new NpgsqlConnection(connectionString);
-
-            await connection.OpenAsync(context.CancellationToken);
-
-            var commandDefinition = new CommandDefinition(
-                """
-                UPDATE public.association_rule_sets
-                SET is_marked_to_delete = TRUE
-                WHERE id = @Id
-                    AND is_saving_complete = TRUE
-                    AND is_marked_to_delete = FALSE
-                """,
-                parameters: new { Id = request.SetId },
-                cancellationToken: context.CancellationToken);
-            var rowsAffected = await connection.ExecuteAsync(commandDefinition);
-
-            if (rowsAffected == 0)
-            {
-                throw RpcExceptionHelper.FailedPrecondition($"Set with id {request.SetId} not found.");
-            }
+            await connection.ExecuteAsync(command);
         }
         catch (NpgsqlException e)
         {
