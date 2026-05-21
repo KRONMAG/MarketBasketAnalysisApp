@@ -1,20 +1,11 @@
 {
   "profiles": {
-    "MarketBasketAnalysis.Server.API": {
+    "MarketBasketAnalysisStorage.Api": {
       "commandName": "Project",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "applicationUrl": "http://localhost:8080"
-    },
-    "WSL": {
-      "commandName": "WSL2",
-      "launchUrl": "http://localhost:8080",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "ASPNETCORE_URLS": "http://localhost:8080"
-      },
-      "distributionName": ""
     }
   }
 }

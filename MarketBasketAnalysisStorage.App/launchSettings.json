@@ -5,7 +5,7 @@
       "commandVersion": "1.0",
       "composeLaunchAction": "LaunchBrowser",
       "composeLaunchServiceName": "app",
-      "composeLaunchUrl": "http://localhost:8080",
+      "composeLaunchUrl": "http://localhost:8081",
       "serviceActions": {
         "app": "StartDebugging",
         "postgres": "StartWithoutDebugging",

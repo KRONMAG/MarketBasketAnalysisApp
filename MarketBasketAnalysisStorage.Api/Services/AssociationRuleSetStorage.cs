@@ -16,9 +16,8 @@ using AssociationRuleChunkGrpc = MarketBasketAnalysisStorage.Contracts.V1.Associ
 
 namespace MarketBasketAnalysisStorage.Api.Services;
 
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1062:Validate arguments of public methods", Justification = "Reviewed")]
-public class AssociationRuleSetStorage(
-    ILogger<AssociationRuleSetStorage> logger) : AssociationRuleSetStorageBase
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1062:Validate arguments of public methods")]
+public class AssociationRuleSetStorage(ILogger<AssociationRuleSetStorage> logger) : AssociationRuleSetStorageBase
 {
     public override async Task<GetResponse> Get(GetRequest request, ServerCallContext context)
     {
@@ -35,11 +34,11 @@ public class AssociationRuleSetStorage(
                 AND is_marked_to_delete = FALSE
             """,
             cancellationToken: context.CancellationToken);
-        IEnumerable<AssociationRuleSetModel> associationRuleSets;
+        IEnumerable<AssociationRuleSetModel> models;
         
         try
         {
-            associationRuleSets = await connection.QueryAsync<AssociationRuleSetModel>(command);
+            models = await connection.QueryAsync<AssociationRuleSetModel>(command);
         }
         catch (NpgsqlException e)
         {
@@ -49,18 +48,27 @@ public class AssociationRuleSetStorage(
 
             throw RpcExceptionHelper.Internal(message);
         }
-
+        
         return new()
         {
             AssociationRuleSets =
             {
-                associationRuleSets.Select(static s => new AssociationRuleSetGrpc
+                models.Select(static model =>
                 {
-                    Id = s.Id,
-                    Name = s.Name,
-                    Description = s.Description,
-                    TransactionsCount = s.TransactionsCount,
-                    CreatedAt = s.CreatedAt.ToTimestamp(),
+                    var grpc = new AssociationRuleSetGrpc
+                    {
+                        Id = model.Id,
+                        Name = model.Name,
+                        TransactionsCount = model.TransactionsCount,
+                        CreatedAt = model.CreatedAt.ToTimestamp(),
+                    };
+
+                    if (model.Description != null)
+                    {
+                        grpc.Description = model.Description;
+                    }
+
+                    return grpc;
                 })
             }
         };
@@ -113,16 +121,18 @@ public class AssociationRuleSetStorage(
 
         await connection.OpenAsync(context.CancellationToken);
 
-        var set = new AssociationRuleSetModel(
+        var model = new AssociationRuleSetModel(
             0,
-            request.Set.Name,
-            request.Set.Description,
-            request.Set.TransactionsCount,
+            request.AssociationRuleSet.Name,
+            request.AssociationRuleSet.HasDescription
+                ? request.AssociationRuleSet.Description
+                : null,
+            request.AssociationRuleSet.TransactionsCount,
             false,
             false,
             DateTime.UtcNow);
 
-        var commandDefinition = new CommandDefinition(
+        var command = new CommandDefinition(
             $"""
              INSERT INTO association_rule_sets (
                  name,
@@ -140,41 +150,39 @@ public class AssociationRuleSetStorage(
                  @{nameof(AssociationRuleSetGrpc.CreatedAt)})
              RETURNING id;
              """,
-            parameters: set,
+            parameters: model,
             cancellationToken: context.CancellationToken);
-        var setId = await connection.ExecuteScalarAsync<int>(commandDefinition);
+        var modelId = await connection.ExecuteScalarAsync<int>(command);
 
-        return new() { SetId = setId };
+        return new() { AssociationRuleSetId = modelId };
     }
 
-    public override async Task<SaveItemChunkResponse> SaveItemChunk(SaveItemChunkRequest request, ServerCallContext context)
+    public override async Task<SaveItemChunkResponse> SaveItemChunk(
+        SaveItemChunkRequest request,
+        ServerCallContext context)
     {
-        if (request.SetId <= 0)
+        if (request.AssociationRuleSetId <= 0)
         {
-            RpcExceptionHelper.InvalidArgument("Association rule set ID must be positive.");
+            throw RpcExceptionHelper.InvalidArgument("Association rule set id must be positive.");
         }
 
-        if (request.Chunk.Items.Count == 0)
+        if (request.ItemChunk.Items.Count == 0)
         {
-            throw RpcExceptionHelper.InvalidArgument("Item chunk must contain at least one item");
+            throw RpcExceptionHelper.InvalidArgument("Item chunk must contain at least one item.");
         }
 
-        byte[]? buffer = null; 
+        byte[]? buffer = null;
+        var chunkSize = request.ItemChunk.CalculateSize();
 
         try
         {
-            var chunkSize = request.Chunk.CalculateSize();
-
             buffer = ArrayPool<byte>.Shared.Rent(chunkSize);
 
             var bufferWrapper = new ArraySegment<byte>(buffer, 0, chunkSize);
 
-            request.Chunk.WriteTo(bufferWrapper);
+            request.ItemChunk.WriteTo(bufferWrapper);
 
-            var itemChunk = new ItemChunkModel(
-                0,
-                bufferWrapper,
-                request.SetId);
+            var itemChunk = new ItemChunkModel(bufferWrapper, request.AssociationRuleSetId);
 
             var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
 
@@ -193,16 +201,17 @@ public class AssociationRuleSetStorage(
                      FROM association_rule_sets
                      WHERE id = @{nameof(ItemChunkModel.AssociationRuleSetId)}
                         AND is_saving_complete = FALSE);
-                 COMMIT
+                 END;
                  """,
-                itemChunk,
+                parameters: itemChunk,
                 cancellationToken: context.CancellationToken);
+
             var rowsAffected = await connection.ExecuteAsync(command);
 
-            if (rowsAffected != 1)
+            if (rowsAffected == 0)
             {
                 throw RpcExceptionHelper.FailedPrecondition(
-                    $"Association rule set with ID {request.SetId} not found or its saving is completed.");
+                    $"Association rule set with ID {request.AssociationRuleSetId} not found or its saving is completed.");
             }
 
             return new();
@@ -227,14 +236,13 @@ public class AssociationRuleSetStorage(
     public override async Task<SaveAssociationRuleChunkResponse> SaveAssociationRuleChunk(
         SaveAssociationRuleChunkRequest request,
         ServerCallContext context)
-
     {
-        if (request.SetId <= 0)
+        if (request.AssociationRuleSetId <= 0)
         {
-            RpcExceptionHelper.InvalidArgument("Association rule set ID must be positive.");
+            throw RpcExceptionHelper.InvalidArgument("Association rule set id must be positive.");
         }
 
-        if (request.Chunk.AssociationRules.Count == 0)
+        if (request.AssociationRuleChunk.AssociationRules.Count == 0)
         {
             throw RpcExceptionHelper.InvalidArgument("Association rule chunk must contain at least one item");
         }
@@ -243,18 +251,15 @@ public class AssociationRuleSetStorage(
 
         try
         {
-            var chunkSize = request.Chunk.CalculateSize();
+            var chunkSize = request.AssociationRuleChunk.CalculateSize();
 
             buffer = ArrayPool<byte>.Shared.Rent(chunkSize);
 
             var bufferWrapper = new ArraySegment<byte>(buffer, 0, chunkSize);
 
-            request.Chunk.WriteTo(bufferWrapper);
+            request.AssociationRuleChunk.WriteTo(bufferWrapper);
 
-            var associationRuleChunk = new AssociationRuleChunkModel(
-                0,
-                bufferWrapper,
-                request.SetId);
+            var model = new AssociationRuleChunkModel(bufferWrapper, request.AssociationRuleSetId);
 
             var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
 
@@ -275,16 +280,16 @@ public class AssociationRuleSetStorage(
                      FROM association_rule_sets
                      WHERE id = @{nameof(AssociationRuleChunkModel.AssociationRuleSetId)}
                         AND is_saving_complete = FALSE);
-                 COMMIT;
+                 END;
                  """,
-                associationRuleChunk,
+                parameters: model,
                 cancellationToken: context.CancellationToken);
             var rowsAffected = await connection.ExecuteAsync(command);
 
-            if (rowsAffected != 1)
+            if (rowsAffected == 0)
             {
                 throw RpcExceptionHelper.FailedPrecondition(
-                    $"Association rule set with ID {request.SetId} not found or its saving is completed.");
+                    $"Association rule set with id {request.AssociationRuleSetId} not found or its saving is completed.");
             }
 
             return new();
@@ -308,9 +313,9 @@ public class AssociationRuleSetStorage(
 
     public override async Task<CompleteSaveResponse> CompleteSave(CompleteSaveRequest request, ServerCallContext context)
     {
-        if (request.SetId <= 0)
+        if (request.AssociationRuleSetId <= 0)
         {
-            RpcExceptionHelper.InvalidArgument("Association rule set ID must be positive.");
+            throw RpcExceptionHelper.InvalidArgument("Association rule set id must be positive.");
         }
 
         try
@@ -324,28 +329,28 @@ public class AssociationRuleSetStorage(
             var command = new CommandDefinition(
                 """
                 BEGIN;
-                SELECT pg_advisory_xact_lock(@SetId);
+                SELECT pg_advisory_xact_lock(@Id);
                 UPDATE association_rule_sets
                 SET is_saving_complete = TRUE
-                WHERE id = @SetId
+                WHERE id = @Id
                     AND is_saving_complete = FALSE
-                    AND EXISTS (SELECT 1 FROM item_chunks WHERE association_rule_set_id = @SetId)
-                    AND EXISTS (SELECT 1 FROM association_rule_chunks WHERE association_rule_set_id = @SetId);
+                    AND EXISTS (SELECT 1 FROM item_chunks WHERE association_rule_set_id = @Id)
+                    AND EXISTS (SELECT 1 FROM association_rule_chunks WHERE association_rule_set_id = @Id);
                 COMMIT;
                 """,
-                new { request.SetId },
+                new { Id = request.AssociationRuleSetId },
                 cancellationToken: context.CancellationToken);
             var rowsAffected = await connection.ExecuteAsync(command);
 
-            if (rowsAffected != 1)
+            if (rowsAffected == 0)
             {
                 throw RpcExceptionHelper.FailedPrecondition(
                     $"""
-                     Failed to complete saving association rule set with ID {request.SetId}.
-                     Possible reasons:" +
+                     Failed to complete saving association rule set with id {request.AssociationRuleSetId}.
+                     Possible reasons:
                      - set not found;
                      - set already saved;
-                     - set is empty: it has no saved item or association rule chunks."
+                     - set is empty: it has no saved item or association rule chunks.
                      """);
             }
 
@@ -361,11 +366,14 @@ public class AssociationRuleSetStorage(
         }
     }
 
-    public override async Task Load(LoadRequest request, IServerStreamWriter<LoadResponse> responseStream, ServerCallContext context)
+    public override async Task Load(
+        LoadRequest request,
+        IServerStreamWriter<LoadResponse> responseStream,
+        ServerCallContext context)
     {
-        if (request.SetId <= 0)
+        if (request.AssociationRuleSetId <= 0)
         {
-            RpcExceptionHelper.InvalidArgument("Association rule set ID must be positive.");
+            throw RpcExceptionHelper.InvalidArgument("Association rule set id must be positive.");
         }
 
         try
@@ -380,9 +388,9 @@ public class AssociationRuleSetStorage(
                 context.CancellationToken);
 
             var command = new CommandDefinition(
-                "SELECT pg_advisory_xact_lock_shared(@SetId);",
+                "SELECT pg_advisory_xact_lock_shared(@Id);",
                 transaction: transaction,
-                parameters: new { request.SetId },
+                parameters: new { Id = request.AssociationRuleSetId },
                 cancellationToken: context.CancellationToken);
             await connection.ExecuteScalarAsync(command);
 
@@ -390,19 +398,19 @@ public class AssociationRuleSetStorage(
                 """
                 SELECT *
                 FROM association_rule_sets
-                WHERE id = @SetId
+                WHERE id = @Id
                     AND is_saving_complete = TRUE
                     AND is_marked_to_delete = FALSE;
                 """,
                 transaction: transaction,
-                parameters: new { request.SetId },
+                parameters: new { Id = request.AssociationRuleSetId },
                 cancellationToken: context.CancellationToken);
             var associationRuleSet = await connection.QueryFirstOrDefaultAsync<AssociationRuleSetModel>(command);
 
             if (associationRuleSet == null)
             {
                 await transaction.CommitAsync(context.CancellationToken);
-                throw RpcExceptionHelper.NotFound($"Association rule set not found by id {request.SetId}.");
+                throw RpcExceptionHelper.NotFound($"Association rule set not found by id {request.AssociationRuleSetId}.");
             }
 
             await responseStream.WriteAsync(
@@ -424,8 +432,8 @@ public class AssociationRuleSetStorage(
 
             var itemChunks = connection
                 .QueryUnbufferedAsync<ItemChunkModel>(
-                    "SELECT * FROM item_chunks WHERE association_rule_set_id = @SetId",
-                    new { request.SetId },
+                    "SELECT * FROM item_chunks WHERE association_rule_set_id = @Id",
+                    new { Id = request.AssociationRuleSetId },
                     transaction: transaction,
                     commandTimeout: 1800)
                 .WithCancellation(context.CancellationToken);
@@ -441,8 +449,8 @@ public class AssociationRuleSetStorage(
 
             var associationRuleChunks = connection
                 .QueryUnbufferedAsync<AssociationRuleChunkModel>(
-                    "SELECT * FROM association_rule_chunks WHERE association_rule_set_id = @SetId",
-                    new { request.SetId },
+                    "SELECT * FROM association_rule_chunks WHERE association_rule_set_id = @Id",
+                    new { Id = request.AssociationRuleSetId },
                     transaction: transaction,
                     commandTimeout: 1800)
                 .WithCancellation(context.CancellationToken);

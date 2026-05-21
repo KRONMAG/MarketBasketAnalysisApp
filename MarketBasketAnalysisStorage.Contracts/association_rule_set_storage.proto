@@ -23,7 +23,7 @@ message GetResponse {
 }
 
 message LoadRequest {
-  int32 set_id = 1;
+  int32 association_rule_set_id = 1;
 }
 
 message LoadResponse {
@@ -36,29 +36,29 @@ message StartSaveRequest {
     optional string description = 2;
     int32 transactions_count = 3;
   }
-  AssociationRuleSet set = 1;
+  AssociationRuleSet association_rule_set = 1;
 }
 
 message StartSaveResponse {
-  int32 set_id = 1;
+  int32 association_rule_set_id = 1;
 }
 
 message SaveItemChunkRequest {
-  int32 set_id = 1;
-  ItemChunk chunk = 2;
+  int32 association_rule_set_id = 1;
+  ItemChunk item_chunk = 2;
 }
 
 message SaveItemChunkResponse {}
 
 message SaveAssociationRuleChunkRequest {
-  int32 set_id = 1;
-  AssociationRuleChunk chunk = 2;
+  int32 association_rule_set_id = 1;
+  AssociationRuleChunk association_rule_chunk = 2;
 }
 
 message SaveAssociationRuleChunkResponse {}
 
 message CompleteSaveRequest {
-  int32 set_id = 1;
+  int32 association_rule_set_id = 1;
 }
 
 message CompleteSaveResponse {}
@@ -80,7 +80,7 @@ message AssociationRuleSetPart {
 message AssociationRuleSet {
   int32 id = 1;
   string name = 2;
-  string description = 3;
+  optional string description = 3;
   int32 transactions_count = 4;
   google.protobuf.Timestamp created_at = 5;
 }
